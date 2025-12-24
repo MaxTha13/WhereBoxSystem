@@ -5,42 +5,33 @@ import json
 import os
 from collections import deque
 
-# =========================================================================
-# 0. Налаштування та робота з JSON-конфігурацією
-# =========================================================================
-
 CONFIG_FILE = "../calibration_config.json"
-HISTORY_LENGTH = 20  # Збільшимо кількість кадрів для більш стабільного усереднення
+HISTORY_LENGTH = 20
 
-# Типові (дефолтні) значення та пояснення для користувача
 DEFAULT_CONFIG = {
     "calibration_settings": {
-        # КОНСТАНТИ, ЯКІ ЗАДАЄ КОРИСТУВАЧ (виміри в МІЛІМЕТРАХ)
-        "real_marker_size_mm": 50.0,  # S_real: Реальний розмір сторони маркера. ОБОВ'ЯЗКОВО ЗМІНИТИ!
-        "known_distance_mm": 300.0,  # D_known: Точна відстань від камери до маркера. ОБОВ'ЯЗКОВО ЗМІНИТИ!
-        "calibration_marker_id": 1  # ID маркера, який використовується для калібрування.
+        "real_marker_size_mm": 50.0,
+        "known_distance_mm": 300.0,
+        "calibration_marker_id": 1
     },
     "output_parameters": {
-        "f_pixels": None,  # F_pixels: Збережений результат (обчислюється скриптом)
+        "f_pixels": None,
         "aruco_dict_type": "DICT_6X6_250"
     }
 }
 
 
 def load_config():
-    """Завантажує параметри калібрування з JSON-файлу або створює його з поясненнями."""
     if not os.path.exists(CONFIG_FILE):
-        print(f"⚠️ Конфігураційний файл '{CONFIG_FILE}' не знайдено. Створюю новий з поясненнями...")
+        print(f"Конфігураційний файл '{CONFIG_FILE}' не знайдено. Створюю новий з поясненнями...")
         try:
             with open(CONFIG_FILE, 'w', encoding='utf-8') as f:
-                # Додамо пояснення до файлу
                 config_with_comments = {
                     "INFO": "Будь ласка, ЗАДАЙТЕ ваші РЕАЛЬНІ виміри в секції 'calibration_settings' перед калібруванням.",
                     **DEFAULT_CONFIG
                 }
                 json.dump(config_with_comments, f, indent=4, ensure_ascii=False)
-            print(f"✅ Файл '{CONFIG_FILE}' створено. ОБОВ'ЯЗКОВО ВНЕСІТЬ СВОЇ ВИМІРИ!")
-            # Якщо файл був створений, ми повернемо типові значення, але попросимо користувача перезапустити
+            print(f"Файл '{CONFIG_FILE}' створено. ОБОВ'ЯЗКОВО ВНЕСІТЬ СВОЇ ВИМІРИ!")
             return DEFAULT_CONFIG['calibration_settings'], DEFAULT_CONFIG['output_parameters'], True
         except Exception as e:
             print(f"ПОМИЛКА при створенні JSON: {e}")
@@ -49,7 +40,6 @@ def load_config():
     try:
         with open(CONFIG_FILE, 'r', encoding='utf-8') as f:
             full_config = json.load(f)
-            # Припускаємо, що config_settings і output_parameters завжди є
             settings = full_config.get('calibration_settings', DEFAULT_CONFIG['calibration_settings'])
             params = full_config.get('output_parameters', DEFAULT_CONFIG['output_parameters'])
             return settings, params, False
@@ -59,7 +49,6 @@ def load_config():
 
 
 def save_focus_result(F_pixels):
-    """Зберігає обчислену фокусну відстань назад у JSON-файл."""
     try:
         with open(CONFIG_FILE, 'r+', encoding='utf-8') as f:
             data = json.load(f)
@@ -68,19 +57,12 @@ def save_focus_result(F_pixels):
             f.seek(0)
             json.dump(data, f, indent=4, ensure_ascii=False)
             f.truncate()
-        print(f"\n✅ УСЕРЕДНЕНЕ значення F_pixels: {F_pixels:.2f} px успішно збережено у '{CONFIG_FILE}'.")
+        print(f"\nУСЕРЕДНЕНЕ значення F_pixels: {F_pixels:.2f} px успішно збережено у '{CONFIG_FILE}'.")
     except Exception as e:
         print(f"ПОМИЛКА при збереженні результату в JSON: {e}")
 
-
-# =========================================================================
-# 1. Функція для виявлення та обробки маркерів (без змін)
-# =========================================================================
-
 def detect_aruco_and_measure(frame, calibration_marker_id, aruco_dict_type):
-    """Виявляє ArUco маркери, вимірює їх розмір у пікселях та малює."""
     try:
-        # Безпечне отримання словника ArUco
         aruco_dict = aruco.getPredefinedDictionary(getattr(aruco, aruco_dict_type))
     except AttributeError:
         return None, None
@@ -102,7 +84,6 @@ def detect_aruco_and_measure(frame, calibration_marker_id, aruco_dict_type):
                 width_bottom = np.linalg.norm(pts[3] - pts[2])
                 pixel_width = (width_top + width_bottom) / 2
 
-                # Малювання
                 cv2.polylines(frame, [np.int32(pts)], True, (0, 255, 0), 2)
                 center_x = int(pts[:, 0].mean())
                 center_y = int(pts[:, 1].mean())
@@ -111,26 +92,18 @@ def detect_aruco_and_measure(frame, calibration_marker_id, aruco_dict_type):
 
     return None, None
 
-
-# =========================================================================
-# 2. Основна функція калібрування
-# =========================================================================
-
 def main():
     settings, params, just_created = load_config()
 
     if settings is None:
         return
 
-    # Якщо файл щойно створено, просимо користувача його відредагувати
     if just_created:
-        print("\n--- 🛑 УВАГА! ПЕРЕД ЗАПУСКОМ ---")
+        print("\n--- УВАГА! ПЕРЕД ЗАПУСКОМ ---")
         print(f"Змініть значення 'real_marker_size_mm' та 'known_distance_mm' у файлі '{CONFIG_FILE}'")
         print("та перезапустіть скрипт!")
         return
 
-    # Витягуємо дані з конфігурації
-    # ДАНІ, ЯКІ НАДАЄ КОРИСТУВАЧ
     REAL_MARKER_SIZE_MM = settings['real_marker_size_mm']
     KNOWN_DISTANCE_MM = settings['known_distance_mm']
     CALIBRATION_MARKER_ID = settings['calibration_marker_id']
@@ -159,14 +132,12 @@ def main():
         if not ret:
             break
 
-        # P_img (вимірює скрипт)
         pixel_width, center = detect_aruco_and_measure(frame, CALIBRATION_MARKER_ID, ARUCO_DICT_TYPE)
 
         current_f_pixels = None
         current_status = ""
 
         if pixel_width is not None and pixel_width > 0:
-            # 🔴 ОБЧИСЛЕННЯ F_pixels (результат)
             current_f_pixels = (pixel_width * KNOWN_DISTANCE_MM) / REAL_MARKER_SIZE_MM
 
             f_pixels_history.append(current_f_pixels)
@@ -174,13 +145,11 @@ def main():
 
             current_status = f"F_CUR: {current_f_pixels:.1f} px | F_AVG ({len(f_pixels_history)}/{HISTORY_LENGTH}): {avg_f_pixels:.1f} px"
 
-            # Додаткове виведення
             cv2.putText(frame, f"P_img: {pixel_width:.1f} px", (center[0] - 50, center[1] + 60),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1)
         else:
             current_status = f"Маркер ID {CALIBRATION_MARKER_ID} не знайдено."
 
-        # Виведення загального статусу
         cv2.putText(frame, current_status, (20, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 255), 2)
         cv2.imshow("Focus Calibration (REAL-TIME AVG)", frame)
 
