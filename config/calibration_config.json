@@ -1,0 +1,11 @@
+{
+    "calibration_settings": {
+        "real_marker_size_mm": 40.0,
+        "known_distance_mm": 460.0,
+        "calibration_marker_id": 1
+    },
+    "output_parameters": {
+        "f_pixels": 687.0,
+        "aruco_dict_type": "DICT_6X6_250"
+    }
+}

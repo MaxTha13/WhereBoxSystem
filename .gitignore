@@ -1,0 +1,16 @@
+__pycache__/
+*.py[cod]
+
+venv/
+env/
+
+.idea/
+.vscode/
+
+*.log
+*.txt
+
+*.pt
+*.onnx
+
+.DS_Store
