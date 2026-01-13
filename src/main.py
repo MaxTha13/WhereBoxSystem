@@ -110,8 +110,8 @@ def initialize_log_file():
             f.write("\n\n" + "=" * 60 + "\n")
         else:
             f.write("=" * 60 + "\n")
-        f.write(f"NEW SESSION: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
-        f.write('Format: "TIME X Y ROTATION SIDE SIZE" (string)\n')
+        f.write(f"НОВА СЕСІЯ: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+        f.write('Формат: "ЧАС X Y ROTATION SIDE SIZE" (string)\n')
         f.write("=" * 60 + "\n\n")
     return LOG_FILE
 
@@ -286,10 +286,11 @@ def main():
     # 2. Initialization
     initialize_log_file()
     generate_aruco_markers(aruco.DICT_6X6_250)
-    calib = load_calibration_config()
+    
+    calib = load_calibration_config() 
 
     if not calib:
-        print("Error: 'calibration_config.json' not found or invalid.")
+        print("[STOP] Програма зупинена через помилку конфігурації.")
         server_running = False
         return
 
